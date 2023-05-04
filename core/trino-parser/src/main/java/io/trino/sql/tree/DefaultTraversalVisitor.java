@@ -991,4 +991,11 @@ public abstract class DefaultTraversalVisitor<C>
 
         return null;
     }
+
+    @Override
+    protected Void visitAnyValue(AnyValue node, C context)
+    {
+        process(node.getExpression(), context);
+        return null;
+    }
 }

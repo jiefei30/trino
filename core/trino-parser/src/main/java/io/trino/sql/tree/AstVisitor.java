@@ -1166,4 +1166,9 @@ public abstract class AstVisitor<R, C>
     {
         return visitNode(node, context);
     }
+
+    protected R visitAnyValue(AnyValue node, C context)
+    {
+        return visitExpression(node, context);
+    }
 }

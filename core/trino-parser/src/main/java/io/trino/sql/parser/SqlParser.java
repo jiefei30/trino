@@ -13,6 +13,8 @@
  */
 package io.trino.sql.parser;
 
+import io.trino.sql.sparkSQL.SparkSQLLexer;
+import io.trino.sql.sparkSQL.SparkSQLParser;
 import io.trino.sql.tree.DataType;
 import io.trino.sql.tree.Expression;
 import io.trino.sql.tree.Node;
@@ -86,6 +88,9 @@ public class SqlParser
 
     public Expression createExpression(String expression, ParsingOptions parsingOptions)
     {
+        if (parsingOptions.getSqlDialect().equals(ParsingOptions.SqlDialect.SPARKSQL)) {
+            return (Expression) invokeSparkSQLParser("SparkSQL expression", expression, SparkSQLParser::singleExpression, parsingOptions);
+        }
         return (Expression) invokeParser("expression", expression, SqlBaseParser::standaloneExpression, parsingOptions);
     }
 
@@ -151,6 +156,59 @@ public class SqlParser
             }
 
             return new AstBuilder(parsingOptions).visit(tree);
+        }
+        catch (StackOverflowError e) {
+            throw new ParsingException(name + " is too large (stack overflow while parsing)");
+        }
+    }
+
+    private Node invokeSparkSQLParser(String name, String sql, Function<SparkSQLParser, ParserRuleContext> parseFunction, ParsingOptions parsingOptions)
+    {
+        try {
+            SparkSQLLexer lexer = new SparkSQLLexer(new CaseInsensitiveStream(CharStreams.fromString(sql)));
+            CommonTokenStream tokenStream = new CommonTokenStream(lexer);
+            SparkSQLParser parser = new SparkSQLParser(tokenStream);
+//            initializer.accept(lexer, parser);
+
+            // Override the default error strategy to not attempt inserting or deleting a token.
+            // Otherwise, it messes up error reporting
+            parser.setErrorHandler(new DefaultErrorStrategy()
+            {
+                @Override
+                public Token recoverInline(Parser recognizer)
+                        throws RecognitionException
+                {
+                    if (nextTokensContext == null) {
+                        throw new InputMismatchException(recognizer);
+                    }
+                    throw new InputMismatchException(recognizer, nextTokensState, nextTokensContext);
+                }
+            });
+
+//            parser.addParseListener(new PostProcessor(Arrays.asList(parser.getRuleNames()), parser));
+//
+//            lexer.removeErrorListeners();
+//            lexer.addErrorListener(LEXER_ERROR_LISTENER);
+//
+//            parser.removeErrorListeners();
+//            parser.addErrorListener(PARSER_ERROR_HANDLER);
+
+            ParserRuleContext tree;
+            try {
+                // first, try parsing with potentially faster SLL mode
+                parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
+                tree = parseFunction.apply(parser);
+            }
+            catch (ParseCancellationException ex) {
+                // if we fail, parse with LL mode
+                tokenStream.seek(0); // rewind input stream
+                parser.reset();
+
+                parser.getInterpreter().setPredictionMode(PredictionMode.LL);
+                tree = parseFunction.apply(parser);
+            }
+
+            return new SparkSQLAstBuilder(parsingOptions).visit(tree);
         }
         catch (StackOverflowError e) {
             throw new ParsingException(name + " is too large (stack overflow while parsing)");
