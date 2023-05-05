@@ -24,7 +24,14 @@ public class ParsingOptions
         REJECT
     }
 
+    public enum SqlDialect
+    {
+        SPARKSQL,
+        TRINO
+    }
+
     private final DecimalLiteralTreatment decimalLiteralTreatment;
+    private final SqlDialect sqlDialect;
 
     public ParsingOptions()
     {
@@ -33,11 +40,22 @@ public class ParsingOptions
 
     public ParsingOptions(DecimalLiteralTreatment decimalLiteralTreatment)
     {
+        this(decimalLiteralTreatment, SqlDialect.TRINO);
+    }
+
+    public ParsingOptions(DecimalLiteralTreatment decimalLiteralTreatment, SqlDialect sqlDialect)
+    {
         this.decimalLiteralTreatment = requireNonNull(decimalLiteralTreatment, "decimalLiteralTreatment is null");
+        this.sqlDialect = requireNonNull(sqlDialect, "sqlDialect is null");
     }
 
     public DecimalLiteralTreatment getDecimalLiteralTreatment()
     {
         return decimalLiteralTreatment;
+    }
+
+    public SqlDialect getSqlDialect()
+    {
+        return sqlDialect;
     }
 }

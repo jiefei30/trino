@@ -18,6 +18,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import io.trino.sql.tree.AllColumns;
 import io.trino.sql.tree.AllRows;
+import io.trino.sql.tree.AnyValue;
 import io.trino.sql.tree.ArithmeticBinaryExpression;
 import io.trino.sql.tree.ArithmeticUnaryExpression;
 import io.trino.sql.tree.Array;
@@ -176,6 +177,15 @@ public final class ExpressionFormatter
         protected String visitExpression(Expression node, Void context)
         {
             throw new UnsupportedOperationException(format("not yet implemented: %s.visit%s", getClass().getName(), node.getClass().getSimpleName()));
+        }
+
+        @Override
+        protected String visitAnyValue(AnyValue node, Void context)
+        {
+            return new StringBuilder()
+                    .append("ANY_VALUE(")
+                    .append(process(node.getExpression(), context))
+                    .append(")").toString();
         }
 
         @Override

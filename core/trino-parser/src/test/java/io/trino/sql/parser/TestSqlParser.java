@@ -17,6 +17,7 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import io.trino.sql.ExpressionFormatter;
 import io.trino.sql.tree.AddColumn;
 import io.trino.sql.tree.AliasedRelation;
 import io.trino.sql.tree.AllColumns;
@@ -294,6 +295,14 @@ import static org.junit.jupiter.api.Assertions.fail;
 public class TestSqlParser
 {
     private static final SqlParser SQL_PARSER = new SqlParser();
+
+    @Test
+    public void testAnyValue()
+    {
+        Expression expression = SQL_PARSER.createExpression("ANY_VALUE('test sparkSQL expression')",
+                new ParsingOptions(REJECT, ParsingOptions.SqlDialect.SPARKSQL));
+        System.out.println(ExpressionFormatter.formatExpression(expression));
+    }
 
     @Test
     public void testPosition()
